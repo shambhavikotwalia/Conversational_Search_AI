@@ -23,6 +23,9 @@ def process_upload_task(file_path: str, organization_id: uuid.UUID, website_id: 
         embedding_service.generate_and_store_embeddings(db)
     except Exception as e:
         print(f"Error processing dataset: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)
