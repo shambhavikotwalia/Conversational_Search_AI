@@ -5,6 +5,7 @@ from app.models.product import Product
 from app.rag.embedding import EmbeddingService
 import uuid
 from typing import List, Dict
+import numpy as np
 
 class RetrievalService:
     def __init__(self, embedding_service: EmbeddingService):
@@ -12,23 +13,28 @@ class RetrievalService:
 
     def retrieve(self, db: Session, query: str, organization_id: uuid.UUID, limit: int = 20) -> List[Dict]:
         # 1. Embed query
-        query_vector = self.embedding_service.model.encode(query).tolist()
+        query_vector = np.array(self.embedding_service.model.encode(query))
         
-        # 2. Vector search via pgvector
-        # We find top K reviews based on vector L2 distance
-        # Filtered by organization_id
-        
-        results = db.query(Review, ReviewEmbedding.vector.l2_distance(query_vector).label("distance")).\
+        # 2. Fetch all review embeddings for the organization into memory
+        # (This is an MVP approach for SQLite. In production with pgvector, this runs in the DB engine).
+        results = db.query(Review, ReviewEmbedding).\
             join(ReviewEmbedding, Review.id == ReviewEmbedding.review_id).\
             join(Product, Review.product_id == Product.id).\
             filter(Product.organization_id == organization_id).\
-            order_by("distance").\
-            limit(limit).all()
+            all()
             
         candidates = []
-        for review, distance in results:
+        for review, embedding_record in results:
+            if not embedding_record.vector:
+                continue
+                
+            # Convert JSON vector back to numpy array
+            doc_vector = np.array(embedding_record.vector)
+            
+            # Calculate L2 distance
+            distance = np.linalg.norm(query_vector - doc_vector)
+            
             # Distance is lower the closer they are. Convert to a similarity score (1 - normalized distance)
-            # A rough heuristic: score = 1 / (1 + distance)
             semantic_score = 1.0 / (1.0 + float(distance))
             
             candidates.append({
@@ -44,4 +50,4 @@ class RetrievalService:
             
         # 3. Sort by hybrid score (currently just semantic score)
         candidates.sort(key=lambda x: x["hybrid_score"], reverse=True)
-        return candidates
+        return candidates[:limit]

@@ -1,7 +1,6 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Integer, Boolean
-from sqlalchemy.dialects.postgresql import JSONB, UUID
-from pgvector.sqlalchemy import Vector
+from sqlalchemy import Column, Uuid, JSON, String, DateTime, ForeignKey, Text, Integer, Boolean
+
 from datetime import datetime
 from app.core.database import Base
 from sqlalchemy.orm import relationship
@@ -9,8 +8,8 @@ from sqlalchemy.orm import relationship
 class Review(Base):
     __tablename__ = "reviews"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    product_id = Column(Uuid(as_uuid=True), ForeignKey("products.id"), nullable=False)
     external_review_id = Column(String, nullable=True)
     title = Column(Text, nullable=True)
     review_text = Column(Text, nullable=True)
@@ -18,7 +17,7 @@ class Review(Base):
     recommended = Column(Boolean, nullable=True)
     positive_feedback_count = Column(Integer, default=0)
     reviewer_age = Column(Integer, nullable=True)
-    metadata_json = Column(JSONB, nullable=True)
+    metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     product = relationship("Product", back_populates="reviews")
@@ -27,11 +26,11 @@ class Review(Base):
 class ReviewEmbedding(Base):
     __tablename__ = "review_embeddings"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    review_id = Column(UUID(as_uuid=True), ForeignKey("reviews.id"), nullable=False, unique=True)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    review_id = Column(Uuid(as_uuid=True), ForeignKey("reviews.id"), nullable=False, unique=True)
     embedding_model = Column(String, default="all-MiniLM-L6-v2")
     embedding_version = Column(String, default="v1")
-    vector = Column(Vector(384)) # all-MiniLM-L6-v2 produces 384-dimensional embeddings
+    vector = Column(JSON) # Storing 384-dimensional embedding as a JSON array of floats for SQLite
     created_at = Column(DateTime, default=datetime.utcnow)
 
     review = relationship("Review", back_populates="embedding")

@@ -1,6 +1,6 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, Uuid, JSON, String, DateTime, ForeignKey
+
 from datetime import datetime
 from app.core.database import Base
 from sqlalchemy.orm import relationship
@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 class Organization(Base):
     __tablename__ = "organizations"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
     status = Column(String, default="active")
     plan = Column(String, default="free")
@@ -20,9 +20,9 @@ class Organization(Base):
 class OrganizationMember(Base):
     __tablename__ = "organization_members"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"))
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id = Column(Uuid(as_uuid=True), ForeignKey("organizations.id"))
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("users.id"))
     role = Column(String, default="MEMBER")
     created_at = Column(DateTime, default=datetime.utcnow)
     
