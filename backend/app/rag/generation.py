@@ -1,11 +1,17 @@
+import json
+import re
+from openai import OpenAI
 import anthropic
 from app.core.config import settings
-import json
 from typing import List, Dict
 
 class RAGGenerationService:
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        self.provider = settings.LLM_PROVIDER.lower()
+        if self.provider == "anthropic":
+            self.anthropic_client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        else:
+            self.openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
         
     def generate(self, query: str, evidence: List[Dict]) -> Dict:
         if not evidence:
@@ -68,26 +74,11 @@ UNTRUSTED EVIDENCE:
 {formatted_evidence}
 """
         
-        # In a real app we'd use function calling or strict JSON parsing
         try:
-            response = self.client.messages.create(
-                model="claude-3-haiku-20240307",
-                system=system_prompt,
-                max_tokens=1000,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            
-            content = response.content[0].text
-            # Very basic JSON extraction
-            import re
-            json_match = re.search(r'\{.*\}', content, re.DOTALL)
-            if json_match:
-                result = json.loads(json_match.group(0))
-                return result
+            if self.provider == "anthropic":
+                return self._generate_anthropic(system_prompt, prompt)
             else:
-                raise ValueError("Could not parse JSON")
+                return self._generate_openai(system_prompt, prompt)
                 
         except Exception as e:
             # Fallback
@@ -99,3 +90,30 @@ UNTRUSTED EVIDENCE:
                 "insufficient_evidence": True,
                 "error": str(e)
             }
+            
+    def _generate_openai(self, system_prompt: str, prompt: str) -> Dict:
+        response = self.openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={ "type": "json_object" }
+        )
+        content = response.choices[0].message.content
+        return json.loads(content)
+        
+    def _generate_anthropic(self, system_prompt: str, prompt: str) -> Dict:
+        response = self.anthropic_client.messages.create(
+            model="claude-3-haiku-20240307",
+            system=system_prompt,
+            max_tokens=1000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        content = response.content[0].text
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            return json.loads(json_match.group(0))
+        raise ValueError("Could not parse JSON from Anthropic")

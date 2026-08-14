@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # LLM
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 
     class Config:
