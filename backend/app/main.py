@@ -1,6 +1,14 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
+
+from app.api.auth import router as auth_router
+from app.api.websites import router as websites_router
+from app.api.api_keys import router as api_keys_router
+from app.api.search import router as search_router
+from app.api.catalog import router as catalog_router
+from app.api.analytics import router as analytics_router
+from app.core.middleware import CorrelationLogMiddleware
 
 app = FastAPI(
     title="Conversational Search AI Platform",
@@ -19,16 +27,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.api.auth import router as auth_router
-from app.api.websites import router as websites_router
-from app.api.api_keys import router as api_keys_router
-from app.api.search import router as search_router
-from app.api.catalog import router as catalog_router
-from app.api.analytics import router as analytics_router
-from app.core.middleware import CorrelationLogMiddleware
-
+# Custom correlation & logging middleware
 app.add_middleware(CorrelationLogMiddleware)
 
+# Include routers
 app.include_router(auth_router)
 app.include_router(websites_router)
 app.include_router(api_keys_router)
